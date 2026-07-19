@@ -85,3 +85,18 @@ cp .env.example .env
 
 # 4. Edit .env and add your API keys
 # At minimum: PEXELS_API_KEY + one LLM key (Gemini recommended - free)
+
+#### Usage
+**Interactive Mode (Recommended):**
+```bash
+python start.py
+
+Then choose:
+- `1` - Enter topic manually
+- `2` - Auto-generate viral title from global trends
+
+**Direct Mode:**
+```bash
+python app.py "5 amazing facts about space exploration"
+
+Output: 5-amazing-facts-about-space-exploration.mp4 + metadata/ folder with SEO content.
