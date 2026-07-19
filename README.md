@@ -80,6 +80,15 @@ cd Colab-Shorts-Factory
 
 # 2. Install dependencies
 pip install -r requirements.txt
+```
+### Usage
+### Interactive Mode (Recommended):
+
+```bash
+python start.py
+```
+
+
 
 # 3. Create your configuration file
 cp .env.example .env
