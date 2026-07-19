@@ -139,20 +139,61 @@ WATERMARK_OPACITY=0.3
 
 ```text
 Colab-Shorts-Factory/
+├── .gitignore
+├── LICENSE
+├── README.md
+├── requirements.txt
+├── setup.py
+├── .env.example
 ├── app.py                      # Main pipeline orchestrator
-├── start.py                    # Interactive CLI
+├── start.py                    # Interactive CLI for topic selection
 ├── run_colab.py                # Google Colab runner script
-├── requirements.txt            # Python dependencies
-├── .env.example                # Configuration template
-└── utility/                    # Core logic modules
-    ├── config.py               # Configuration manager
-    ├── script/                 # LLM script generation
-    ├── audio/                  # TTS and Audio Ducking
-    ├── captions/               # 6 viral caption styles
-    ├── music/                  # Local MusicGen integration
-    ├── llm/                    # Local Qwen model fallback
-    ├── metadata/               # SEO metadata generator
-    └── render/                 # MoviePy render engine
+├── config.py                   # Global configuration manager
+│
+├── utility/
+│   ├── __init__.py
+│   ├── config/
+│   │   └── config.py           # Configuration manager
+│   ├── script/
+│   │   ├── __init__.py
+│   │   └── script_generator.py # LLM script generation with fallback
+│   ├── audio/
+│   │   ├── __init__.py
+│   │   ├── audio_generator.py  # TTS orchestrator
+│   │   └── audio_ducker.py     # Professional audio ducking
+│   ├── tts/
+│   │   ├── __init__.py
+│   │   ├── edgetts_tts.py      # EdgeTTS integration
+│   │   ├── elevenlabs_tts.py   # ElevenLabs integration
+│   │   └── local_tts.py        # Bark TTS with emotions
+│   ├── stt/
+│   │   ├── __init__.py
+│   │   └── whisper_stt.py      # Local Whisper STT
+│   ├── captions/
+│   │   ├── __init__.py
+│   │   ├── timed_captions_generator.py
+│   │   └── caption_styler.py   # 6 viral caption styles (2026)
+│   ├── music/
+│   │   ├── __init__.py
+│   │   └── local_music_generator.py  # MusicGen integration
+│   ├── llm/
+│   │   ├── __init__.py
+│   │   └── local_llm_client.py # Local Qwen model for offline fallback
+│   ├── metadata/
+│   │   ├── __init__.py
+│   │   └── metadata_generator.py     # SEO metadata generator
+│   ├── video/
+│   │   ├── __init__.py
+│   │   ├── background_video_generator.py
+│   │   └── video_search_query_generator.py
+│   └── render/
+│       ├── __init__.py
+│       ├── render_engine.py    # MoviePy renderer
+│       └── remotion_renderer.py # React/Remotion renderer (advanced)
+│
+└── remotion-composer/          # React-based renderer (optional)
+    └── src/
+        └── index.tsx
 ```
 ---
 
