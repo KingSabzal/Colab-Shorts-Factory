@@ -86,6 +86,8 @@ cp .env.example .env
 # 4. Edit .env and add your API keys
 # At minimum: PEXELS_API_KEY + one LLM key (Gemini recommended - free)
 
+---
+
 #### Usage
 **Interactive Mode (Recommended):**
 ```bash
@@ -100,3 +102,11 @@ Then choose:
 python app.py "5 amazing facts about space exploration"
 
 Output: 5-amazing-facts-about-space-exploration.mp4 + metadata/ folder with SEO content.
+
+---
+
+## ⚙️ Configuration
+
+All settings are configured via the `.env` file. Key configurations:
+
+### LLM & Fallback
