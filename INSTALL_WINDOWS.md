@@ -1,3 +1,10 @@
+## ️ Important Note for Local AI Models (Bark, MusicGen, Qwen)
+This project now includes fully offline, local AI models for Voiceover, Music, and Script Fallback. 
+- **GPU Highly Recommended:** To run these local models at a normal speed, an NVIDIA GPU with at least 8GB VRAM (like RTX 3060 or higher) is highly recommended.
+- **CPU Fallback:** If you do not have a GPU, the local models will run on your CPU, but generating audio or text may take several minutes per task.
+- **Cloud Alternative:** If your PC is not powerful enough, please use the **Google Colab** version of this project which provides free GPU access.
+
+---
 # Windows Installation Guide
 
 ## Prerequisites
