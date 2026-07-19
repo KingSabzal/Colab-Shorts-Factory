@@ -1,4 +1,4 @@
-# 🎬 Colab Shorts Factory
+#  Colab Shorts Factory
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/KingSabzal/Colab-Shorts-Factory/blob/main/run_colab.py)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -60,7 +60,7 @@ Automatically generates optimized content for:
 ### Option 1: Google Colab (Recommended - Free)
 Run the entire pipeline directly in your browser. No installation required!
 
-👉 **[Open in Google Colab](https://colab.research.google.com/github/KingSabzal/Colab-Shorts-Factory/blob/main/run_colab.py)**
+ **[Open in Google Colab](https://colab.research.google.com/github/KingSabzal/Colab-Shorts-Factory/blob/main/run_colab.py)**
 
 ### Option 2: Local Installation (Windows/Linux/Mac)
 
@@ -72,6 +72,7 @@ Run the entire pipeline directly in your browser. No installation required!
   - CPU fallback is available but slower.
 
 #### Setup
+
 ```bash
 # 1. Clone the repository
 git clone https://github.com/KingSabzal/Colab-Shorts-Factory.git
@@ -86,27 +87,3 @@ cp .env.example .env
 # 4. Edit .env and add your API keys
 # At minimum: PEXELS_API_KEY + one LLM key (Gemini recommended - free)
 
----
-
-#### Usage
-**Interactive Mode (Recommended):**
-```bash
-python start.py
-
-Then choose:
-- `1` - Enter topic manually
-- `2` - Auto-generate viral title from global trends
-
-**Direct Mode:**
-```bash
-python app.py "5 amazing facts about space exploration"
-
-Output: 5-amazing-facts-about-space-exploration.mp4 + metadata/ folder with SEO content.
-
----
-
-## ⚙️ Configuration
-
-All settings are configured via the `.env` file. Key configurations:
-
-### LLM & Fallback
