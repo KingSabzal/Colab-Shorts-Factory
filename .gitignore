@@ -1,12 +1,35 @@
-.logs/
-venv/
-__pycache__/
-.DS_Store
+# Environment variables
 .env
-remotion-composer/node_modules/
-remotion-composer/out/
-bin/
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project Generated Files
+rendered_video.mp4
+*.mp4
 *.wav
 *.mp3
-rendered_video.mp4
+*.png
+*.jpg
 pipeline_checkpoint.json
+metadata/
+bin/
+remotion-composer/node_modules/
