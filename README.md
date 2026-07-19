@@ -202,10 +202,15 @@ Colab-Shorts-Factory/
 | Service | Purpose | Cost | Get Key |
 |---------|---------|------|---------|
 | **Pexels** | Stock video footage | Free | [pexels.com/api](https://www.pexels.com/api/) |
-| **Gemini** | Script generation | Free | [aistudio.google.com](https://aistudio.google.com/app/apikey) |
-| **MuAPI** | Premium AI video/music | Paid | [muapi.ai](https://muapi.ai/) |
+| **Gemini** | LLM Script Generation | Free | [aistudio.google.com](https://aistudio.google.com/app/apikey) |
+| **OpenRouter** | LLM Smart Fallback | Free tier | [openrouter.ai](https://openrouter.ai/keys) |
+| **Groq** | LLM Smart Fallback | Free tier | [console.groq.com](https://console.groq.com/keys) |
+| **OpenAI** | LLM Smart Fallback | Paid | [platform.openai.com](https://platform.openai.com/api-keys) |
+| **MuAPI** | Premium AI Video & Music | Paid | [muapi.ai](https://muapi.ai/) |
+| **ElevenLabs** | Premium Voiceover (TTS) | Paid | [elevenlabs.io](https://elevenlabs.io/) |
+| **Deepgram** | Premium Speech-to-Text (STT) | Paid | [console.deepgram.com](https://console.deepgram.com/) |
 
-**Minimum required:** Pexels + one LLM key (Gemini recommended).
+**Minimum required to start:** Pexels + one free LLM key (Gemini recommended).
 ---
 
 ## 🎯 Output
