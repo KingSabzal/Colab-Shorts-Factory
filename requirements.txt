@@ -69,3 +69,4 @@ vaderSentiment
 # Local AI Music Generation & Audio Processing
 audiocraft
 pydub
+whisper-timestamped
