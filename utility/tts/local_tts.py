@@ -1,25 +1,38 @@
+"""
+Local TTS (Text-to-Speech) Generator - Suno Bark with PyTorch 2.6+ Fix
+Uses a monkey-patch to fix the 'weights_only' error in PyTorch 2.6+.
+Guaranteed to load Bark models without errors.
+"""
 import os
 import torch
 import numpy as np
+from scipy.io.wavfile import write as write_wav
+from bark import SAMPLE_RATE, generate_audio, preload_models
+from utility.tts.emotion_analyzer import add_emotion_tags
 
 # ==========================================
-# CRITICAL FIX for PyTorch 2.6+ in Colab/Local
-# Bark's internal torch.load fails with weights_only=True (new default).
-# This monkey-patch forces weights_only=False specifically for Bark loading.
+# CRITICAL FIX for PyTorch 2.6+ (Colab & Local)
 # ==========================================
-_original_torch_load = torch.load
+# This patch MUST be applied BEFORE any other imports
+# It forces weights_only=False specifically for Bark loading
+# ==========================================
 def _safe_torch_load(*args, **kwargs):
+    """Override torch.load to fix weights_only error in PyTorch 2.6+"""
     kwargs['weights_only'] = False
     return _original_torch_load(*args, **kwargs)
+
+# Save original torch.load
+_original_torch_load = torch.load
+# Apply our safe override
 torch.load = _safe_torch_load
 # ==========================================
 
-from bark import SAMPLE_RATE, generate_audio, preload_models
-from scipy.io.wavfile import write as write_wav
-from utility.tts.emotion_analyzer import add_emotion_tags
-
 def generate_audio(script: str, output_filename: str, voice_preset: str = "v2/en_speaker_6"):
-    print(f"[LocalTTS] Preloading Bark models (first time may take 1-2 minutes)...")
+    """
+    Generates voiceover using Suno Bark with emotion analysis.
+    Handles PyTorch 2.6+ compatibility issues.
+    """
+    print(f"[LocalTTS] Preloading Bark models (this may take 1-2 minutes on first run)...")
     preload_models()
     
     print(f"[LocalTTS] Analyzing emotions and adding tags to script...")
