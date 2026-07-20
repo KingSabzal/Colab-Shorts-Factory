@@ -1,57 +1,41 @@
 import os
 import torch
-from audiocraft.models import MusicGen
-from audiocraft.data.audio import audio_write
+from transformers import AutoProcessor, MusicgenForConditionalGeneration
+import scipy.io.wavfile as wavfile
+import numpy as np
 
-# Global model instance to prevent reloading
-_model = None
-
-def get_music_model():
-    global _model
-    if _model is None:
-        print("[LocalMusic] Loading MusicGen model (downloading ~1GB on first run)...")
-        # Using 'melody' or 'medium' model. 'small' is faster but lower quality.
-        _model = MusicGen.get_pretrained('small')
-        _model.set_generation_params(duration=45) # Generate 45 seconds
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        _model = _model.to(device)
-        print(f"[LocalMusic] Model loaded on {device}.")
-    return _model
-
-def generate_local_music(topic: str, orientation_landscape: bool, output_path: str = "local_bg_music.wav"):
+def generate_local_music(prompt: str, is_landscape: bool = False, output_path: str = "background_music.wav"):
     """
-    Generates 2026-standard background music based on the topic and video type.
+    Generates background music locally using MusicGen (via Transformers).
+    This bypasses the unstable audiocraft library and works natively in Colab.
     """
-    model = get_music_model()
+    print(f"🎵 Generating local music using MusicGen for: '{prompt}'")
+    model_id = "facebook/musicgen-small"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     
-    # 2026 Trending Prompts based on video orientation and topic
-    if orientation_landscape:
-        # Cinematic, Epic, Documentary style for long-form
-        prompt = f"cinematic ambient orchestral, hans zimmer style, epic swell, documentary background music, no vocals, {topic}"
-    else:
-        # Lo-fi, Synthwave, Phonk for Shorts/Reels
-        prompt = f"lo-fi hip hop beat, chill synthwave, minimal, 90 bpm, youtube shorts background music, no vocals, {topic}"
-        
-    print(f"[LocalMusic] Generating music with prompt: '{prompt}'")
+    print("📥 Loading MusicGen model (this may take a minute on first run)...")
+    processor = AutoProcessor.from_pretrained(model_id)
+    model = MusicgenForConditionalGeneration.from_pretrained(model_id).to(device)
     
-    descriptions = [prompt]
-    wav = model.generate(descriptions)
+    # Force a safe duration (e.g., 30 seconds = 1500 tokens at 50Hz)
+    # This prevents the "max_new_tokens must be > 0" bug caused by boolean is_landscape
+    duration = 30
+    max_new_tokens = int(duration * 50)
     
-    # Save the generated audio
-    for idx, one_wav in enumerate(wav):
-        audio_write(
-            dst_folder=os.path.dirname(output_path) or '.',
-            base_name=os.path.splitext(os.path.basename(output_path))[0],
-            strategy='clip',
-            sample_rate=model.sample_rate,
-            audio=one_wav.cpu(),
-        )
-        
-    # The library saves as .wav by default, ensure it matches our expected path
-    base_name = os.path.splitext(os.path.basename(output_path))[0]
-    generated_file = f"{base_name}.wav"
-    if os.path.exists(generated_file) and generated_file != output_path:
-        os.replace(generated_file, output_path)
-        
-    print(f"[LocalMusic] Music saved to {output_path}")
+    inputs = processor(
+        text=[prompt],
+        padding=True,
+        return_tensors="pt",
+    ).to(device)
+    
+    print("🎼 Generating audio...")
+    audio_values = model.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=True, guidance_scale=3.0)
+    
+    # Convert to numpy and save as 16-bit PCM WAV
+    sampling_rate = model.config.audio_encoder.sampling_rate
+    audio = audio_values[0, 0].cpu().numpy()
+    audio = np.int16(audio / np.max(np.abs(audio)) * 32767)
+    
+    wavfile.write(output_path, sampling_rate, audio)
+    print(f"✅ Local music generated and saved to: {output_path}")
     return output_path
