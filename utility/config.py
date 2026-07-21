@@ -1,6 +1,10 @@
+"""
+Configuration Manager - Singleton Pattern
+Handles all environment variables and validation
+"""
 import os
 from dotenv import load_dotenv
-from typing import Optional, Literal, List
+from typing import Optional, List
 from openai import OpenAI
 
 try:
@@ -15,8 +19,10 @@ try:
 except ImportError:
     GEMINI_AVAILABLE = False
 
+
 class ConfigurationError(Exception):
     pass
+
 
 class Config:
     _instance: Optional['Config'] = None
@@ -47,21 +53,21 @@ class Config:
     def _validate_configuration(self) -> None:
         errors = []
         llm_provider = os.getenv('LLM_PROVIDER', 'auto').lower()
-        valid_providers = ['auto', 'openrouter', 'openai', 'groq', 'gemini', 'local']
-
+        valid_providers = ['auto', 'openrouter', 'openai', 'groq', 'gemini']
+        
         if llm_provider not in valid_providers:
             errors.append(
                 f"Invalid LLM_PROVIDER: '{llm_provider}'. Must be one of: {', '.join(valid_providers)}"
             )
 
         has_any_key = bool(
-            os.getenv('OPENROUTER_API_KEY') or
-            os.getenv('OPENAI_API_KEY') or
-            os.getenv('GROQ_API_KEY') or
+            os.getenv('OPENROUTER_API_KEY') or 
+            os.getenv('OPENAI_API_KEY') or 
+            os.getenv('GROQ_API_KEY') or 
             os.getenv('GEMINI_API_KEY')
         )
-        if not has_any_key and llm_provider != 'local':
-            errors.append("At least one LLM API key (OPENROUTER, OPENAI, GROQ, or GEMINI) must be provided, or set LLM_PROVIDER=local.")
+        if not has_any_key:
+            errors.append("At least one LLM API key (OPENROUTER, OPENAI, GROQ, or GEMINI) must be provided.")
 
         if not os.getenv('PEXELS_API_KEY') and not os.getenv('MUAPI_API_KEY'):
             errors.append("Missing required API key: PEXELS_API_KEY or MUAPI_API_KEY must be provided")
@@ -73,8 +79,8 @@ class Config:
             errors.append("Missing required API key: DEEPGRAM_API_KEY")
 
         tts_provider = os.getenv('TTS_PROVIDER', 'edgetts').lower()
-        if tts_provider not in ['edgetts', 'elevenlabs', 'local']:
-            errors.append(f"Invalid TTS_PROVIDER: '{tts_provider}'. Must be one of: edgetts, elevenlabs, local")
+        if tts_provider not in ['edgetts', 'elevenlabs']:
+            errors.append(f"Invalid TTS_PROVIDER: '{tts_provider}'. Must be one of: edgetts, elevenlabs")
         elif tts_provider == 'edgetts' and not os.getenv('EDGETTS_VOICE'):
             errors.append("Missing required configuration: EDGETTS_VOICE")
         elif tts_provider == 'elevenlabs':
@@ -106,8 +112,6 @@ class Config:
             return [os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile'), 'llama-3.1-70b-versatile', 'mixtral-8x7b-32768']
         elif provider == 'gemini':
             return [os.getenv('GEMINI_MODEL', 'gemini-1.5-flash'), 'gemini-1.5-pro', 'gemini-1.5-flash-8b']
-        elif provider == 'local':
-            return ['Qwen/Qwen2.5-1.5B-Instruct']
         raise ConfigurationError(f"Unknown LLM provider: {provider}")
 
     def get_llm_client(self, provider: str = None):
@@ -115,7 +119,7 @@ class Config:
             provider = self.get_llm_provider()
             if provider == 'auto':
                 provider = 'openrouter'
-
+            
         if provider == 'openrouter':
             return OpenAI(
                 api_key=os.getenv('OPENROUTER_API_KEY'),
@@ -133,8 +137,6 @@ class Config:
                 raise ConfigurationError("Gemini library not installed.")
             genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
             return genai
-        elif provider == 'local':
-            return "local_client"
         raise ConfigurationError(f"Unknown LLM provider: {provider}")
 
     def get_llm_model(self, provider: str = None) -> str:
@@ -155,8 +157,6 @@ class Config:
             return os.getenv('EDGETTS_VOICE', 'en-US-GuyNeural')
         elif provider == 'elevenlabs':
             return os.getenv('ELEVENLABS_VOICE_ID', '21m00Tcm4TlvDq8ikWAM')
-        elif provider == 'local':
-            return os.getenv('LOCAL_TTS_VOICE', 'v2/en_speaker_6')
         raise ConfigurationError(f"Unknown TTS provider: {provider}")
 
     def get_pexels_api_key(self) -> str:
@@ -190,10 +190,10 @@ class Config:
         return int(os.getenv('CAPTION_FONT_SIZE', '100'))
 
     def get_caption_font_color(self) -> str:
-        return os.getenv('CAPTION_FONT_COLOR', 'yellow').lower()
+        return os.getenv('CAPTION_FONT_COLOR', 'white').lower()
 
     def get_caption_stroke_width(self) -> int:
-        return int(os.getenv('CAPTION_STROKE_WIDTH', '4'))
+        return int(os.getenv('CAPTION_STROKE_WIDTH', '3'))
 
     def get_caption_stroke_color(self) -> str:
         return os.getenv('CAPTION_STROKE_COLOR', 'black').lower()
@@ -208,28 +208,6 @@ class Config:
     def get_caption_font_face(self) -> str:
         return os.getenv('CAPTION_FONT_FACE', 'Arial-Bold')
 
-    def get_caption_style(self) -> str:
-        style = os.getenv('CAPTION_STYLE', 'hormozi').lower()
-        valid_styles = ['hormozi', 'card', 'neon', 'minimal', 'karaoke', 'comic']
-        if style not in valid_styles:
-            return 'hormozi'
-        return style
-
-    def get_watermark_enabled(self) -> bool:
-        return os.getenv('WATERMARK_ENABLED', 'true').lower() == 'true'
-
-    def get_watermark_text(self) -> str:
-        return os.getenv('WATERMARK_TEXT', '@YourChannelID')
-
-    def get_watermark_color(self) -> str:
-        return os.getenv('WATERMARK_COLOR', 'white').lower()
-
-    def get_watermark_opacity(self) -> float:
-        try:
-            opacity = float(os.getenv('WATERMARK_OPACITY', '0.3'))
-            return max(0.1, min(0.9, opacity))
-        except ValueError:
-            return 0.3
 
 def get_config() -> Config:
     try:
