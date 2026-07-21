@@ -97,7 +97,7 @@ def get_caption_clips(text: str, t1: float, t2: float, config):
         config: Config instance with caption settings.
     
     Returns:
-        MoviePy TextClip or CompositeVideoClip with styled caption.
+        List containing MoviePy TextClip or CompositeVideoClip with styled caption.
     """
     # Get style from config
     style = config.get_caption_style()
@@ -139,7 +139,8 @@ def get_caption_clips(text: str, t1: float, t2: float, config):
     if style == 'card':
         clip = _apply_card_background(clip, video_width, video_height, position)
     
-    return clip
+    # Fixed: Return as list for .extend() compatibility in render_engine
+    return [clip]
 
 
 def _create_text_clip_with_fallback(text: str, fontsize: int, font: str, 
