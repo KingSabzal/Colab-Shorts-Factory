@@ -1,147 +1,265 @@
-import os
-import platform
-from moviepy.editor import TextClip, ColorClip
+"""
+Caption Styler
+==============
+Applies visual styles to timed captions based on user configuration.
+Supports 6 different caption styles: hormozi, card, neon, minimal, karaoke, comic.
 
-# Font mapping for each 2026 caption style
-# Each style has its own signature font as per viral video research
-FONT_MAP = {
-    'hormozi': ['Impact', 'Arial-Black', 'Arial-Bold'],
-    'card': ['Helvetica', 'Arial', 'Verdana'],
-    'neon': ['Arial-Bold', 'Helvetica-Bold', 'Impact'],
-    'minimal': ['Helvetica', 'Arial', 'Calibri'],
-    'karaoke': ['Impact', 'Arial-Black', 'Arial-Bold'],
-    'comic': ['Comic Sans MS', 'Comic-Sans-MS', 'Chalkboard', 'Arial']
+This module is responsible for generating MoviePy TextClip objects with
+appropriate styling based on the CAPTION_STYLE environment variable.
+"""
+from moviepy.editor import TextClip, CompositeVideoClip, ColorClip
+from utility.config import get_config, ConfigurationError
+
+
+# ==========================================
+# Style Presets
+# ==========================================
+STYLE_PRESETS = {
+    'hormozi': {
+        'fontsize': 100,
+        'font': 'Arial-Bold',
+        'color': 'yellow',
+        'stroke_color': 'black',
+        'stroke_width': 4,
+        'position': 'bottom_center',
+        'description': 'Bold, yellow/white, thick black outline (Highest engagement)'
+    },
+    'card': {
+        'fontsize': 80,
+        'font': 'Arial',
+        'color': 'white',
+        'stroke_color': 'black',
+        'stroke_width': 2,
+        'position': 'bottom_center',
+        'description': 'White text on semi-transparent black background (Best readability)'
+    },
+    'neon': {
+        'fontsize': 90,
+        'font': 'Arial-Bold',
+        'color': 'cyan',
+        'stroke_color': 'magenta',
+        'stroke_width': 3,
+        'position': 'bottom_center',
+        'description': 'Glowing cyan/magenta text (Gen-Z aesthetic)'
+    },
+    'minimal': {
+        'fontsize': 70,
+        'font': 'Helvetica',
+        'color': 'white',
+        'stroke_color': 'black',
+        'stroke_width': 1,
+        'position': 'bottom_center',
+        'description': 'Clean white text, thin outline (Professional)'
+    },
+    'karaoke': {
+        'fontsize': 95,
+        'font': 'Arial-Bold',
+        'color': 'yellow',
+        'stroke_color': 'black',
+        'stroke_width': 3,
+        'position': 'bottom_center',
+        'description': 'Highlights current word (High retention)'
+    },
+    'comic': {
+        'fontsize': 85,
+        'font': 'Comic-Sans-MS',
+        'color': 'white',
+        'stroke_color': 'black',
+        'stroke_width': 4,
+        'position': 'bottom_center',
+        'description': 'Playful font with thick outline (Entertainment)'
+    }
 }
 
-def get_available_font(preferred_fonts):
-    """
-    Tries each font in the list and returns the first one that works on the current system.
-    This ensures cross-platform compatibility (Windows, Linux, Mac).
-    """
-    for font in preferred_fonts:
-        try:
-            # Test if the font is available by creating a small TextClip
-            test_clip = TextClip(txt="test", font=font, fontsize=10, color='white')
-            test_clip.close()
-            return font
-        except Exception:
-            continue
-    # Ultimate fallback
-    return 'Arial-Bold'
+# ==========================================
+# Fallback Fonts (in order of preference)
+# ==========================================
+FONT_FALLBACKS = [
+    'Arial-Bold',
+    'Arial',
+    'DejaVu-Sans-Bold',
+    'DejaVu-Sans',
+    'Liberation-Sans-Bold',
+    'Liberation-Sans',
+    'Helvetica',
+    'sans-serif'
+]
 
-def get_caption_clips(text, t1, t2, config):
+
+def get_caption_clips(text: str, t1: float, t2: float, config):
     """
-    Generates MoviePy clips for captions based on 2026 trending styles.
-    Each style uses its own signature font, color scheme, and visual treatment.
+    Generates a MoviePy TextClip for a single caption word/segment.
+    
+    Args:
+        text: The caption text to display.
+        t1: Start time in seconds.
+        t2: End time in seconds.
+        config: Config instance with caption settings.
+    
+    Returns:
+        MoviePy TextClip or CompositeVideoClip with styled caption.
     """
+    # Get style from config
     style = config.get_caption_style()
-    base_color = config.get_caption_font_color()
-    stroke_width = config.get_caption_stroke_width()
-    stroke_color = config.get_caption_stroke_color()
-    position = config.get_caption_position()
     
-    # Smart font selection:
-    # If user customized CAPTION_FONT_FACE in .env (not default 'Arial-Bold'), use their font
-    # Otherwise, use the signature font for this style from FONT_MAP
-    user_font = config.get_caption_font_face()
-    if user_font != 'Arial-Bold':
-        # User override: use their custom font
-        preferred_fonts = [user_font]
+    # Get style preset (fallback to hormozi if unknown)
+    preset = STYLE_PRESETS.get(style, STYLE_PRESETS['hormozi'])
+    
+    # Override preset with user config (if specified)
+    fontsize = config.get_caption_font_size() or preset['fontsize']
+    font = config.get_caption_font_face() or preset['font']
+    color = config.get_caption_font_color() or preset['color']
+    stroke_color = config.get_caption_stroke_color() or preset['stroke_color']
+    stroke_width = config.get_caption_stroke_width() or preset['stroke_width']
+    position = config.get_caption_position() or preset['position']
+    
+    # Determine video dimensions based on orientation
+    is_landscape = config.get_video_orientation()
+    video_width = 1920 if is_landscape else 1080
+    video_height = 1080 if is_landscape else 1920
+    
+    # Try to create TextClip with specified font, fallback if needed
+    clip = _create_text_clip_with_fallback(
+        text=text,
+        fontsize=fontsize,
+        font=font,
+        color=color,
+        stroke_color=stroke_color,
+        stroke_width=stroke_width,
+        video_width=video_width
+    )
+    
+    # Set timing
+    clip = clip.set_start(t1).set_end(t2)
+    
+    # Apply position based on style and config
+    clip = _apply_position(clip, position, style, video_width, video_height)
+    
+    # Apply style-specific effects
+    if style == 'card':
+        clip = _apply_card_background(clip, video_width, video_height, position)
+    
+    return clip
+
+
+def _create_text_clip_with_fallback(text: str, fontsize: int, font: str, 
+                                     color: str, stroke_color: str, 
+                                     stroke_width: int, video_width: int):
+    """
+    Create a TextClip with font fallback support.
+    If the specified font is not available, tries fallback fonts.
+    """
+    # Try with specified font first
+    fonts_to_try = [font] + [f for f in FONT_FALLBACKS if f != font]
+    
+    for font_name in fonts_to_try:
+        try:
+            clip = TextClip(
+                text,
+                fontsize=fontsize,
+                font=font_name,
+                color=color,
+                stroke_color=stroke_color,
+                stroke_width=stroke_width,
+                method='caption',
+                size=(video_width - 100, None)  # Leave 50px margin on each side
+            )
+            # If we get here without error, font worked
+            return clip
+        except Exception as e:
+            # Font not available, try next fallback
+            continue
+    
+    # Last resort: create clip without font specification
+    try:
+        clip = TextClip(
+            text,
+            fontsize=fontsize,
+            color=color,
+            stroke_color=stroke_color,
+            stroke_width=stroke_width,
+            method='caption',
+            size=(video_width - 100, None)
+        )
+        return clip
+    except Exception as e:
+        raise ConfigurationError(f"Failed to create TextClip: {e}")
+
+
+def _apply_position(clip, position: str, style: str, video_width: int, video_height: int):
+    """
+    Apply position to the caption clip based on style and configuration.
+    """
+    # Calculate vertical position with padding
+    padding = 150  # Distance from bottom
+    
+    if position == 'bottom_center':
+        clip = clip.set_position(('center', video_height - padding - clip.h))
+    elif position == 'bottom':
+        clip = clip.set_position(('center', video_height - padding - clip.h))
+    elif position == 'bottom_left':
+        clip = clip.set_position((50, video_height - padding - clip.h))
+    elif position == 'bottom_right':
+        clip = clip.set_position((video_width - clip.w - 50, video_height - padding - clip.h))
+    elif position == 'center':
+        clip = clip.set_position(('center', 'center'))
+    elif position == 'top':
+        clip = clip.set_position(('center', 100))
     else:
-        # Use signature font for this style
-        preferred_fonts = FONT_MAP.get(style, ['Arial-Bold'])
+        # Default to bottom_center
+        clip = clip.set_position(('center', video_height - padding - clip.h))
     
-    font_face = get_available_font(preferred_fonts)
-    
-    # Position mapping for 1080p video
-    pos_map = {
-        'bottom_center': ('center', 900),
-        'bottom_left': ('left', 900),
-        'bottom_right': ('right', 900),
-        'top': ('center', 150),
-        'center': ('center', 540),
-        'bottom': ('center', 950)
-    }
-    pos = pos_map.get(position, ('center', 900))
-    clips = []
+    return clip
 
-    # ==========================================
-    # 2026 TRENDING CAPTION STYLES
-    # Each style has its own font, color, and visual treatment
-    # ==========================================
-    
-    if style == 'hormozi':
-        # Signature: Impact font, yellow/white, thick black outline
-        # Inspired by Alex Hormozi's viral shorts style
-        font_size = config.get_caption_font_size()
-        color = 'yellow' if base_color == 'yellow' else 'white'
-        sw = max(stroke_width, 5)
-        txt_clip = TextClip(txt=text, font=font_face, fontsize=font_size, color=color, 
-                            stroke_width=sw, stroke_color='black', method='label')
-        txt_clip = txt_clip.set_start(t1).set_end(t2).set_position(pos)
-        clips.append(txt_clip)
 
-    elif style == 'card':
-        # Signature: Helvetica font, white text on semi-transparent black card
-        # Best readability on any background
-        font_size = config.get_caption_font_size()
-        txt_clip = TextClip(txt=text, font=font_face, fontsize=font_size, color='white', 
-                            stroke_width=0, stroke_color='transparent', method='label')
-        txt_clip = txt_clip.set_start(t1).set_end(t2).set_position(pos)
+def _apply_card_background(clip, video_width: int, video_height: int, position: str):
+    """
+    Apply semi-transparent black background for 'card' style.
+    Creates a composite clip with background + text.
+    """
+    try:
+        # Calculate background dimensions
+        bg_width = clip.w + 40  # 20px padding on each side
+        bg_height = clip.h + 20  # 10px padding on top/bottom
         
-        w, h = txt_clip.size
-        padding = 15
-        bg_clip = ColorClip(size=(int(w + padding*2), int(h + padding)), color=(0, 0, 0))
-        bg_clip = bg_clip.set_start(t1).set_end(t2).set_opacity(0.6).set_position((pos[0], pos[1] - 5))
-        clips.append(bg_clip)
-        clips.append(txt_clip)
+        # Create semi-transparent black background
+        background = ColorClip(
+            size=(bg_width, bg_height),
+            color=(0, 0, 0)
+        ).set_opacity(0.7)
+        
+        # Position background relative to text
+        if position in ['bottom_center', 'bottom']:
+            bg_x = (video_width - bg_width) // 2
+            bg_y = video_height - 150 - clip.h - 10
+        elif position == 'center':
+            bg_x = (video_width - bg_width) // 2
+            bg_y = (video_height - bg_height) // 2
+        else:
+            bg_x = (video_width - bg_width) // 2
+            bg_y = video_height - 150 - clip.h - 10
+        
+        background = background.set_position((bg_x, bg_y))
+        
+        # Composite background and text
+        composite = CompositeVideoClip([background, clip])
+        return composite
+        
+    except Exception as e:
+        # If card background fails, return original clip
+        return clip
 
-    elif style == 'neon':
-        # Signature: Bold font with glowing neon effect (cyan/magenta)
-        # Gen-Z aesthetic, high visual impact
-        font_size = config.get_caption_font_size()
-        neon_colors = ['cyan', 'magenta', 'green', 'blue', 'yellow']
-        color = base_color if base_color in neon_colors else 'cyan'
-        # Simulate glow with thick white stroke + colored text
-        txt_clip = TextClip(txt=text, font=font_face, fontsize=font_size, color=color, 
-                            stroke_width=3, stroke_color='white', method='label')
-        txt_clip = txt_clip.set_start(t1).set_end(t2).set_position(pos)
-        clips.append(txt_clip)
 
-    elif style == 'minimal':
-        # Signature: Helvetica font, clean white, thin outline
-        # Professional, no distraction
-        font_size = config.get_caption_font_size()
-        txt_clip = TextClip(txt=text, font=font_face, fontsize=font_size, color='white', 
-                            stroke_width=2, stroke_color='black', method='label')
-        txt_clip = txt_clip.set_start(t1).set_end(t2).set_position(pos)
-        clips.append(txt_clip)
-
-    elif style == 'karaoke':
-        # Signature: Impact font, highlights current word in yellow/green
-        # High retention, keeps viewer focused
-        font_size = config.get_caption_font_size()
-        color = 'yellow' if base_color == 'yellow' else 'green'
-        txt_clip = TextClip(txt=text, font=font_face, fontsize=font_size, color=color, 
-                            stroke_width=4, stroke_color='black', method='label')
-        txt_clip = txt_clip.set_start(t1).set_end(t2).set_position(pos)
-        clips.append(txt_clip)
-
-    elif style == 'comic':
-        # Signature: Comic Sans font, playful and friendly
-        # Entertainment, meme content, casual tone
-        font_size = int(config.get_caption_font_size() * 1.1)
-        txt_clip = TextClip(txt=text, font=font_face, fontsize=font_size, color='white', 
-                            stroke_width=4, stroke_color='black', method='label')
-        txt_clip = txt_clip.set_start(t1).set_end(t2).set_position(pos)
-        clips.append(txt_clip)
-
-    else:
-        # Default fallback: use configured font
-        font_size = config.get_caption_font_size()
-        txt_clip = TextClip(txt=text, font=font_face, fontsize=font_size, color=base_color, 
-                            stroke_width=stroke_width, stroke_color=stroke_color, method='label')
-        txt_clip = txt_clip.set_start(t1).set_end(t2).set_position(pos)
-        clips.append(txt_clip)
-
-    return clips
+def get_caption_style_info(style: str = None):
+    """
+    Get information about available caption styles.
+    
+    Args:
+        style: Specific style name (optional). If None, returns all styles.
+    
+    Returns:
+        dict: Style information or all available styles.
+    """
+    if style:
+        return STYLE_PRESETS.get(style, STYLE_PRESETS['hormozi'])
+    return STYLE_PRESETS
