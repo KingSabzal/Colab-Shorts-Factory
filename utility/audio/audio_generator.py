@@ -1,25 +1,32 @@
+"""
+Audio Generator - TTS Orchestration
+Supports: EdgeTTS (free, high-quality) and ElevenLabs (premium)
+"""
 import os
 import asyncio
-from utility.config import get_config
 
-async def generate_audio(script, output_filename):
+
+async def generate_audio(script: str, output_filename: str):
+    """
+    Generate audio using the configured TTS provider.
+    """
+    from utility.config import get_config
+    
     config = get_config()
     tts_provider = config.get_tts_provider()
     
+    print(f"\n--- STAGE 2: Generating Voiceover ---")
+    print(f"🎙️ Using TTS Provider: {tts_provider}")
+    
     if tts_provider == 'edgetts':
         from utility.tts.edgetts_tts import generate_audio as edgetts_audio
-        voice = config.get_tts_voice()
-        await edgetts_audio(script, output_filename, voice)
+        await edgetts_audio(script, output_filename)
         
     elif tts_provider == 'elevenlabs':
         from utility.tts.elevenlabs_tts import generate_audio as elevenlabs_audio
-        voice_id = config.get_tts_voice()
-        elevenlabs_audio(script, output_filename, voice_id)
-        
-    elif tts_provider == 'local':
-        from utility.tts.local_tts import generate_audio as local_audio
-        voice_preset = os.getenv('LOCAL_TTS_VOICE', 'v2/en_speaker_6')
-        local_audio(script, output_filename, voice_preset)
+        await elevenlabs_audio(script, output_filename)
         
     else:
-        raise ValueError(f"Unknown TTS provider: {tts_provider}")
+        raise ValueError(f"Unknown TTS provider: {tts_provider}. Supported: edgetts, elevenlabs")
+    
+    print(f"[PipelineManager] Checkpoint saved: stage='2_voiceover'")
