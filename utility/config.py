@@ -1,6 +1,6 @@
 """
 Configuration Manager - Singleton Pattern
-Handles all environment variables and validation
+Handles all environment variables and validation for Colab Shorts Factory.
 """
 import os
 from dotenv import load_dotenv
@@ -21,10 +21,15 @@ except ImportError:
 
 
 class ConfigurationError(Exception):
+    """Custom exception for configuration errors."""
     pass
 
 
 class Config:
+    """
+    Singleton configuration manager.
+    Loads and validates all settings from .env file.
+    """
     _instance: Optional['Config'] = None
 
     def __new__(cls) -> 'Config':
@@ -43,6 +48,7 @@ class Config:
         self._initialized = True
 
     def _validate_env_file(self) -> None:
+        """Check if .env file exists."""
         env_path = os.path.join(os.getcwd(), '.env')
         if not os.path.exists(env_path):
             raise ConfigurationError(
@@ -51,7 +57,10 @@ class Config:
             )
 
     def _validate_configuration(self) -> None:
+        """Validate all required configuration values."""
         errors = []
+        
+        # Validate LLM Provider
         llm_provider = os.getenv('LLM_PROVIDER', 'auto').lower()
         valid_providers = ['auto', 'openrouter', 'openai', 'groq', 'gemini']
         
@@ -60,6 +69,7 @@ class Config:
                 f"Invalid LLM_PROVIDER: '{llm_provider}'. Must be one of: {', '.join(valid_providers)}"
             )
 
+        # Check if at least one LLM API key is provided
         has_any_key = bool(
             os.getenv('OPENROUTER_API_KEY') or 
             os.getenv('OPENAI_API_KEY') or 
@@ -69,15 +79,18 @@ class Config:
         if not has_any_key:
             errors.append("At least one LLM API key (OPENROUTER, OPENAI, GROQ, or GEMINI) must be provided.")
 
-        if not os.getenv('PEXELS_API_KEY') and not os.getenv('MUAPI_API_KEY'):
-            errors.append("Missing required API key: PEXELS_API_KEY or MUAPI_API_KEY must be provided")
+        # Check if Pexels API key is provided (required for B-roll)
+        if not os.getenv('PEXELS_API_KEY'):
+            errors.append("Missing required API key: PEXELS_API_KEY must be provided")
 
+        # Validate STT Provider
         stt_provider = os.getenv('STT_PROVIDER', 'whisper').lower()
         if stt_provider not in ['whisper', 'deepgram']:
             errors.append(f"Invalid STT_PROVIDER: '{stt_provider}'. Must be one of: whisper, deepgram")
         elif stt_provider == 'deepgram' and not os.getenv('DEEPGRAM_API_KEY'):
             errors.append("Missing required API key: DEEPGRAM_API_KEY")
 
+        # Validate TTS Provider (local removed due to high RAM usage)
         tts_provider = os.getenv('TTS_PROVIDER', 'edgetts').lower()
         if tts_provider not in ['edgetts', 'elevenlabs']:
             errors.append(f"Invalid TTS_PROVIDER: '{tts_provider}'. Must be one of: edgetts, elevenlabs")
@@ -93,10 +106,15 @@ class Config:
             error_message = "Configuration validation failed:\n\n" + "\n".join(f"  - {err}" for err in errors)
             raise ConfigurationError(error_message)
 
+    # ==========================================
+    # LLM Provider Methods
+    # ==========================================
     def get_llm_provider(self) -> str:
+        """Get the configured LLM provider."""
         return os.getenv('LLM_PROVIDER', 'auto').lower()
 
     def get_llm_models(self, provider: str) -> List[str]:
+        """Get list of models to try for a given provider."""
         if provider == 'openrouter':
             return [
                 os.getenv('OPENROUTER_MODEL', 'openai/gpt-4o'),
@@ -115,6 +133,7 @@ class Config:
         raise ConfigurationError(f"Unknown LLM provider: {provider}")
 
     def get_llm_client(self, provider: str = None):
+        """Get LLM client instance for the specified provider."""
         if provider is None:
             provider = self.get_llm_provider()
             if provider == 'auto':
@@ -140,18 +159,25 @@ class Config:
         raise ConfigurationError(f"Unknown LLM provider: {provider}")
 
     def get_llm_model(self, provider: str = None) -> str:
+        """Get the primary model for the specified provider."""
         if provider is None:
             provider = self.get_llm_provider()
         models = self.get_llm_models(provider)
         return models[0] if models else 'gpt-4o'
 
+    # ==========================================
+    # STT & TTS Provider Methods
+    # ==========================================
     def get_stt_provider(self) -> str:
+        """Get the configured Speech-to-Text provider."""
         return os.getenv('STT_PROVIDER', 'whisper').lower()
 
     def get_tts_provider(self) -> str:
+        """Get the configured Text-to-Speech provider."""
         return os.getenv('TTS_PROVIDER', 'edgetts').lower()
 
     def get_tts_voice(self) -> str:
+        """Get the voice ID for the configured TTS provider."""
         provider = self.get_tts_provider()
         if provider == 'edgetts':
             return os.getenv('EDGETTS_VOICE', 'en-US-GuyNeural')
@@ -159,57 +185,100 @@ class Config:
             return os.getenv('ELEVENLABS_VOICE_ID', '21m00Tcm4TlvDq8ikWAM')
         raise ConfigurationError(f"Unknown TTS provider: {provider}")
 
+    # ==========================================
+    # API Key Methods
+    # ==========================================
     def get_pexels_api_key(self) -> str:
+        """Get Pexels API key for B-roll videos."""
         key = os.getenv('PEXELS_API_KEY')
         if not key:
             raise ConfigurationError("PEXELS_API_KEY not found in .env file")
         return key
 
-    def get_video_orientation(self) -> bool:
-        orientation = os.getenv('VIDEO_ORIENTATION', 'portrait').lower()
-        if orientation not in ['portrait', 'landscape']:
-            raise ConfigurationError(f"Invalid VIDEO_ORIENTATION: '{orientation}'")
-        return orientation == 'landscape'
+    def get_pixabay_api_key(self) -> str:
+        """Get Pixabay API key for dynamic music search."""
+        return os.getenv('PIXABAY_API_KEY', '')
 
     def get_deepgram_api_key(self) -> str:
+        """Get Deepgram API key for cloud-based STT."""
         key = os.getenv('DEEPGRAM_API_KEY')
         if not key:
             raise ConfigurationError("DEEPGRAM_API_KEY not found in .env file")
         return key
 
     def get_elevenlabs_api_key(self) -> str:
+        """Get ElevenLabs API key for premium TTS."""
         key = os.getenv('ELEVENLABS_API_KEY')
         if not key:
             raise ConfigurationError("ELEVENLABS_API_KEY not found in .env file")
         return key
 
+    # ==========================================
+    # Video Configuration Methods
+    # ==========================================
+    def get_video_orientation(self) -> bool:
+        """Get video orientation (True = landscape, False = portrait)."""
+        orientation = os.getenv('VIDEO_ORIENTATION', 'portrait').lower()
+        if orientation not in ['portrait', 'landscape']:
+            raise ConfigurationError(f"Invalid VIDEO_ORIENTATION: '{orientation}'")
+        return orientation == 'landscape'
+
+    # ==========================================
+    # Caption Configuration Methods
+    # ==========================================
     def get_captions_enabled(self) -> bool:
+        """Check if captions are enabled."""
         return os.getenv('CAPTIONS_ENABLED', 'true').lower() == 'true'
 
+    def get_caption_style(self) -> str:
+        """Get caption style (hormozi, card, neon, minimal, karaoke, comic)."""
+        return os.getenv('CAPTION_STYLE', 'hormozi').lower()
+
     def get_caption_font_size(self) -> int:
+        """Get caption font size."""
         return int(os.getenv('CAPTION_FONT_SIZE', '100'))
 
     def get_caption_font_color(self) -> str:
+        """Get caption font color."""
         return os.getenv('CAPTION_FONT_COLOR', 'white').lower()
 
+    def get_caption_font_face(self) -> str:
+        """Get caption font face."""
+        return os.getenv('CAPTION_FONT_FACE', 'Arial-Bold')
+
     def get_caption_stroke_width(self) -> int:
+        """Get caption stroke width."""
         return int(os.getenv('CAPTION_STROKE_WIDTH', '3'))
 
     def get_caption_stroke_color(self) -> str:
+        """Get caption stroke color."""
         return os.getenv('CAPTION_STROKE_COLOR', 'black').lower()
 
     def get_caption_position(self) -> str:
+        """Get caption position."""
         position = os.getenv('CAPTION_POSITION', 'bottom_center').lower()
         valid_positions = ['center', 'top', 'bottom', 'bottom_center', 'bottom_left', 'bottom_right']
         if position not in valid_positions:
             raise ConfigurationError(f"Invalid CAPTION_POSITION: '{position}'")
         return position
 
-    def get_caption_font_face(self) -> str:
-        return os.getenv('CAPTION_FONT_FACE', 'Arial-Bold')
+    # ==========================================
+    # Audio Configuration Methods
+    # ==========================================
+    def is_local_music_enabled(self) -> bool:
+        """Check if local music generation is enabled."""
+        return os.getenv('LOCAL_MUSIC_ENABLED', 'true').lower() == 'true'
+
+    def is_audio_ducking_enabled(self) -> bool:
+        """Check if audio ducking is enabled."""
+        return os.getenv('AUDIO_DUCKING_ENABLED', 'true').lower() == 'true'
 
 
 def get_config() -> Config:
+    """
+    Get the singleton Config instance.
+    Raises ConfigurationError if validation fails.
+    """
     try:
         return Config()
     except ConfigurationError as e:
