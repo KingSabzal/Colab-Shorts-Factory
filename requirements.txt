@@ -1,3 +1,6 @@
+# ==========================================
+# Core Dependencies (from original project)
+# ==========================================
 aiohttp==3.9.5
 aiosignal==1.3.1
 annotated-types==0.7.0
@@ -52,20 +55,34 @@ typing_extensions==4.12.1
 urllib3==2.2.1
 whisper-timestamped==1.15.4
 yarl==1.9.4
-# Additional dependencies for Smart Fallback and Colab compatibility
-edge-tts
+
+# ==========================================
+# Additional Dependencies for Smart Fallback and Colab Compatibility
+# ==========================================
 pytrends
 beautifulsoup4
 ollama
+
+# ==========================================
 # Local LLM for Viral Title Generation
+# ==========================================
 transformers>=4.36.0
-torch>=2.1.0
 accelerate>=0.25.0
-pytrends
-# Local AI Music Generation & Audio Processing
-audiocraft
+
+# ==========================================
+# Dynamic Music Generation & Audio Processing
+# ==========================================
 pydub
-whisper-timestamped
-transformers
-scipy
 soundfile
+
+# ==========================================
+# NEW: Dynamic YouTube Music Search (Added by us)
+# ==========================================
+yt-dlp
+
+# ==========================================
+# REMOVED: audiocraft (Removed by us - causes build errors in Colab)
+# ==========================================
+# audiocraft was removed because it requires Rust compiler and has 
+# compatibility issues with PyTorch 2.6+ in Colab. 
+# We now use yt-dlp for dynamic music search instead.
